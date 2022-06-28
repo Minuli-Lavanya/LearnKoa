@@ -1,0 +1,206 @@
+//Backend<br>
+//index.js<br>
+
+    <p>require("dotenv").config();<br>
+    const Koa = require("koa");<br>
+    const KoaRouter = require("koa-router");<br>
+    const cors = require("@koa/cors");<br>
+    const bodyParser = require("koa-bodyparser");<br>
+    const json = require("koa-json");<br><br>
+    
+    const { dbConnect } = require("./utils/dbConnect");<br><br>
+    
+    const courseRoutes = require("./routes/course.routes");<br>
+    const studentRoutes = require("./routes/student.routes") ;<br>
+    const teacherRoutes = require("./routes/teacher.routes");<br><br>
+    
+    const app = new Koa();<br>
+    const router = new KoaRouter();<br><br>
+    
+    app.use(cors());<br>
+    app.use(bodyParser());<br>
+    app.use(json());<br><br>
+    
+    app.use(router.routes()).use(router.allowedMethods());<br><br>
+    
+    app.use(courseRoutes.routes());<br>
+    app.use(studentRoutes.routes());<br>
+    app.use(teacherRoutes.routes());<br><br>
+    
+    router.get("/", (ctx) => {<br>
+        ctx.body = {<br>
+            message : "student management API"<br>
+        }<br>
+    });<br><br>
+    
+    app.listen(9000, () => {<br>
+        dbConnect();<br>
+        console.log(`Server is up and running on http://localhost:9000`);<br>
+    });<br></p>
+
+<h2>//dbConnect.js</h2>
+
+<br>const mongoose = require("mongoose");<br><br>
+    
+    const dbConnect = () => {<br>
+      const dbConStr = process.env.MONGODB_URL;<br><br>
+    
+      mongoose.connect(dbConStr, () => {<br>
+        console.log("__Database connected__");<br>
+      });<br>
+    };<br>
+    
+    module.exports = { dbConnect };<br><br>
+
+<h2>//.env</h2><br>
+
+    // MONGODB_URL = mongodb://localhost:27017/managementdb<br>
+    //MONGODB_URL = mongodb+srv://s------:L----123@cluster0.kga7s.mongodb.net/sp1_db?retryWrites=true&w=majority<br><br>
+
+<h3>//model</h3>
+<h2>//course.model.js</h2>
+
+<br> const mongoose = require("mongoose");<br><br>
+    
+    const CourseSchema = new mongoose.Schema({<br><br>
+    
+        courseName : {<br>
+            type: String,<br>
+            required: true<br>
+        },<br><br>
+    
+        courseFee : {<br>
+            type: String,<br>
+            required: true<br>
+        },<br><br>
+    
+        students : [{<br>
+            type: mongoose.Schema.Types.ObjectId,<br>
+            required: false,<br>
+            ref: "students"<br>
+        }],<br>
+    });<br><br>
+    
+    const Course = mongoose.model("courses", CourseSchema);<br>
+    module.exports = Course;<br>
+
+<h2>//student.model.js</h2>
+
+    const mongoose = require("mongoose");<br>
+    
+    const StudentSchema = new mongoose.Schema({<br>
+    
+        name : {<br>
+            type: String,<br>
+            required: true<br>
+        },<br><br>
+    
+        nic : {<br>
+            type: String,<br>
+            required: true<br>
+        },<br><br>
+    
+        age : {<br>
+            type: Number,<br>
+            required: true<br>
+        },<br><br>
+    
+        courseId : {<br>
+            type: mongoose.Schema.Types.ObjectId,<br>
+            required: false,<br>
+            ref: "courses"<br>
+        },<br>
+    });<br>
+    
+    const Student = mongoose.model("students", StudentSchema);<br>
+    module.exports = Student;<br>
+
+<h2>//teacher.model.js</h2>
+
+    const mongoose = require("mongoose");<br><br>
+    
+    const TeacherSchema = new mongoose.Schema({<br>
+    
+        name: {<br>
+            type: String,<br>
+            required: true<br>
+        },<br><br>
+    
+        salary: {<br>
+            type: Number,<br>
+            required: true<br>
+        }<br>
+    })<br>
+    
+    const Teacher = mongoose.model("teachers", TeacherSchema);<br>
+    module.exports = Teacher;<br><br>
+
+//controller
+//course.controller.js
+
+<br>const Course = require("../models/course.model");<br>
+    
+    const addCourese = async (ctx) => {<br>
+        
+        try{<br>
+            const { courseName, courseFee, students } = ctx.request.body;<br><br>
+    
+            const course = await Course.create({<br>
+                courseName: courseName,<br>
+                courseFee: courseFee,<br>
+                students: students,<br>
+            });<br>
+            return (ctx.body = course );  <br>
+        }catch(error) {<br>
+            return (ctx.body = { message: error.message });<br>
+        }<br>
+    };<br><br>
+    
+    const getCourse = async (ctx) => {<br>
+    
+        try {<br>
+            const courses = await Course.find().populate({<br>
+                path: "students",<br>
+                select: "name nic age",<br>
+            });<br>
+            return (ctx.body =  courses );<br>
+    
+        } catch (error) {<br>
+            return (ctx.body = { message: error.message });<br>
+        }<br>
+    };<br><br>
+    
+    const updateCourse = async (ctx) => {<br>
+        try {<br>
+    
+            const courseId = ctx.params.courseId;<br>
+    
+            const { courseName, courseFee, students } = ctx.request.body;<br>
+    
+            const course = await Course.findByIdAndUpdate(courseId, {<br>
+                courseName: courseName,<br>
+                courseFee: courseFee,<br>
+                students: students,<br>
+            });<br>
+            return (ctx.body = course);<br>
+        } catch (error) {<br>
+            return (ctx.body = { message: error.message });<br>
+        }<br>
+    };<br><br>
+    
+    const deleteCourse =  async (ctx) => {<br>
+    
+        try {<br>
+            
+            const courseId = ctx.params.courseId;<br>
+            const course = await Course.findByIdAndDelete(courseId);<br>
+            return (ctx.body = course);<br>
+    
+        }catch (error) {<br>
+            return (ctx.body = { message: error.message });<br>
+        }<br>
+    }<br>
+    
+    module.exports = {<br>
+        addCourese, getCourse, updateCourse,deleteCourse,<br>
+    }; <br>
